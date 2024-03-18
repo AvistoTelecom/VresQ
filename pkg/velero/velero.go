@@ -77,7 +77,7 @@ func GetVeleroPod(dynamicClient dynamic.Interface) (unstructured.Unstructured, e
 func getVeleroPodSecretName(veleroPod *unstructured.Unstructured) (string, error) {
 	volumes, found, _ := unstructured.NestedSlice(veleroPod.Object, "spec", "volumes")
 	if !found {
-		return "", fmt.Errorf("could not get velero pod volumes in source cluster.")
+		return "", fmt.Errorf("could not get velero pod volumes in source cluster")
 	}
 
 	for _, volume := range volumes {
