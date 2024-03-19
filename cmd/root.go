@@ -182,9 +182,28 @@ OR run using arguments:
 				}
 			}
 		}
-		velero.SetupVeleroBackupLocation(&sourceDynamiClient, &destinationDynamiClient, &config)
+		oldBackupLocationName, err := velero.GetDefaultBackupStorageLocation(&destinationDynamiClient, &config)
+		if _, ok := err.(velero.NotFoundError); ok {
+			log.Printf("No default BackupStorageLocation was discovered on destination cluster.")
+		} else if err != nil {
+			log.Fatalf("Error: could not get default BackupStorageLocation on destination cluster. %v", err)
+		}
+		newBackupLocationName := velero.SetupVeleroBackupLocation(&sourceDynamiClient, &destinationDynamiClient, &config)
 		velero.SetupVeleroConfigmap(&sourceDynamiClient, &destinationDynamiClient, config.DestinationVeleroNamespace)
-		err := velero.CreateVeleroRestore(&destinationDynamiClient, config.DestinationVeleroNamespace, config.RestoreName, config.VeleroRestoreOptions)
+		err = velero.CreateVeleroRestore(&destinationDynamiClient, config.DestinationVeleroNamespace, config.RestoreName, config.VeleroRestoreOptions)
+		log.Printf("old backup location: %s", oldBackupLocationName)
+		if oldBackupLocationName != "" {
+			if newBackupLocationName != "" {
+				err := velero.SetBackupStorageLocationDefault(&destinationDynamiClient, newBackupLocationName, false, &config)
+				if err != nil {
+					log.Fatalf("Error: could not set BackupStorageLocation %s default status to false in destination cluster. %v", newBackupLocationName, err)
+				}
+			}
+			err := velero.SetBackupStorageLocationDefault(&destinationDynamiClient, oldBackupLocationName, true, &config)
+			if err != nil {
+				log.Fatalf("Error: could not set %s as default BackupStorageLocation in destination cluster. %v", oldBackupLocationName, err)
+			}
+		}
 		if err != nil {
 			log.Fatalf("Error creating Velero Restore: %v", err)
 		}
