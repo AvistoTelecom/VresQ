@@ -182,36 +182,15 @@ OR run using arguments:
 				}
 			}
 		}
-		oldBackupLocationName, err := velero.GetDefaultBackupStorageLocation(&destinationDynamiClient, &config)
-		if _, ok := err.(velero.NotFoundError); ok {
-			log.Printf("No default BackupStorageLocation was discovered on destination cluster.")
-		} else if err != nil {
-			log.Fatalf("Error: could not get default BackupStorageLocation on destination cluster. %v", err)
-		}
-		newBackupLocationName := velero.SetupVeleroBackupLocation(&sourceDynamiClient, &destinationDynamiClient, &config)
+		velero.SetupVeleroBackupLocation(&sourceDynamiClient, &destinationDynamiClient, &config)
 		velero.SetupVeleroConfigmap(&sourceDynamiClient, &destinationDynamiClient, config.DestinationVeleroNamespace)
-		err = velero.CreateVeleroRestore(&destinationDynamiClient, config.DestinationVeleroNamespace, config.RestoreName, config.VeleroRestoreOptions)
-		log.Printf("old backup location: %s", oldBackupLocationName)
-		if oldBackupLocationName != "" {
-			if newBackupLocationName != "" {
-				err := velero.SetBackupStorageLocationDefault(&destinationDynamiClient, newBackupLocationName, false, &config)
-				if err != nil {
-					log.Fatalf("Error: could not set BackupStorageLocation %s default status to false in destination cluster. %v", newBackupLocationName, err)
-				}
-			}
-			err := velero.SetBackupStorageLocationDefault(&destinationDynamiClient, oldBackupLocationName, true, &config)
-			if err != nil {
-				log.Fatalf("Error: could not set %s as default BackupStorageLocation in destination cluster. %v", oldBackupLocationName, err)
-			}
-		}
+		err := velero.CreateVeleroRestore(&destinationDynamiClient, config.DestinationVeleroNamespace, config.RestoreName, config.VeleroRestoreOptions)
 		if err != nil {
 			log.Fatalf("Error creating Velero Restore: %v", err)
 		}
 	},
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {

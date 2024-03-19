@@ -2,7 +2,6 @@ package velero
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -11,7 +10,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 )
 
@@ -164,45 +162,6 @@ func getBackupStorageLocation(dynamicClient dynamic.Interface, namespace string,
 	return *backup, nil
 }
 
-func GetDefaultBackupStorageLocation(dynamicClient dynamic.Interface, config *common.Config) (string, error) {
-	backupLocations, err := listBackupStorageLocations(dynamicClient, config.DestinationVeleroNamespace)
-	var name string
-	if err != nil {
-		return "", err
-	}
-	for _, backupLocation := range backupLocations.Items {
-		isDefault, gotDefault, _ := unstructured.NestedBool(backupLocation.Object, "spec", "default")
-		if gotDefault && isDefault {
-			name = backupLocation.GetName()
-		}
-	}
-	if name == "" {
-		return name, NotFoundError{Err: errors.New("no default BackupStorageLocation found")}
-	}
-	return name, nil
-}
-
-func SetBackupStorageLocationDefault(dynamicClient dynamic.Interface, name string, isDefault bool, config *common.Config) error {
-	gvr := backupLocationGVR
-	patch := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"spec": map[string]interface{}{
-				"default": isDefault,
-			},
-		},
-	}
-
-	jsonPatch, err := patch.MarshalJSON()
-	if err != nil {
-		return fmt.Errorf("failed to marshall BackupStorageLocation patch as json: %v", err)
-	}
-	_, err = dynamicClient.Resource(gvr).Namespace(config.DestinationVeleroNamespace).Patch(context.TODO(), name, types.MergePatchType, jsonPatch, metav1.PatchOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to update resource: %v", err)
-	}
-	return nil
-}
-
 func listBackupStorageLocations(dynamicClient dynamic.Interface, namespace string) (*unstructured.UnstructuredList, error) {
 
 	// Create a GVR which represents an Istio Virtual Service.
@@ -229,7 +188,7 @@ func createVeleroBackupStorageLocation(dynamicClient dynamic.Interface, namespac
 			"spec": spec,
 		},
 	}
-
+	spec["default"] = false
 	err := createResource(dynamicClient, namespace, &backupStorageLocation, "backupstoragelocations")
 	if err != nil {
 		return err
