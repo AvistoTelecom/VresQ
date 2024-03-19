@@ -172,7 +172,7 @@ func selectItems(selectedPos int, allItems []*item, label string) ([]*item, erro
 	// all selected items.
 	var selectedItems []*item
 	for _, i := range allItems {
-		if i.IsSelected {
+		if i.IsSelected && i.ID != doneID {
 			selectedItems = append(selectedItems, i)
 		}
 	}

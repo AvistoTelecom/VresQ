@@ -39,9 +39,9 @@ func (r NotFoundError) Is(e error) bool {
 const (
 	ConfirmYes     = common.ConfirmYes
 	ConfirmNo      = common.ConfirmNo
-	veleroApiGroup = "velero.io"
-	apiVersion     = "v1"
-	configMapName  = "change-storage-class-config"
+	veleroApiGroup = common.VeleroApiGroup
+	apiVersion     = common.ApiVersion
+	configMapName  = common.ConfigMapName
 )
 
 func mapToYAML(data map[string]interface{}) (string, error) {
@@ -56,7 +56,7 @@ func GetVeleroPod(dynamicClient dynamic.Interface) (unstructured.Unstructured, e
 	// Create a GVR (Group, Version, Resource) for the Pods resource
 	podsGVR := schema.GroupVersionResource{
 		Group:    "",
-		Version:  "v1",
+		Version:  apiVersion,
 		Resource: "pods",
 	}
 
@@ -77,7 +77,7 @@ func GetVeleroPod(dynamicClient dynamic.Interface) (unstructured.Unstructured, e
 func getVeleroPodSecretName(veleroPod *unstructured.Unstructured) (string, error) {
 	volumes, found, _ := unstructured.NestedSlice(veleroPod.Object, "spec", "volumes")
 	if !found {
-		return "", fmt.Errorf("could not get velero pod volumes in source cluster.")
+		return "", fmt.Errorf("could not get velero pod volumes in source cluster")
 	}
 
 	for _, volume := range volumes {

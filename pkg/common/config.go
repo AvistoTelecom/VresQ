@@ -7,8 +7,11 @@ import (
 )
 
 const (
-	ConfirmYes = "Yes"
-	ConfirmNo  = "No"
+	ConfirmYes     = "Yes"
+	ConfirmNo      = "No"
+	VeleroApiGroup = "velero.io"
+	ApiVersion     = "v1"
+	ConfigMapName  = "change-storage-class-config"
 )
 
 type DynamicClientInterface interface {

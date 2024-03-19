@@ -52,7 +52,6 @@ func CreateVeleroRestore(dynamicClient dynamic.Interface, namespace string, name
 
 	err := createResource(dynamicClient, namespace, &restore, "restores")
 	if err != nil {
-		log.Fatalf("Error creating Velero Resource: %v", err)
 		return err
 	} else {
 		log.Println("Velero Restore created successfully")
@@ -61,7 +60,7 @@ func CreateVeleroRestore(dynamicClient dynamic.Interface, namespace string, name
 	// Watch the restore until it's completed or fails
 	err = watchRestore(dynamicClient, namespace, name, groupVersionResource)
 	if err != nil {
-		log.Fatalf("Error watching restore: %v", err)
+		return err
 	}
 
 	return nil

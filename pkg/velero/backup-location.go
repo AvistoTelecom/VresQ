@@ -13,7 +13,15 @@ import (
 	"k8s.io/client-go/dynamic"
 )
 
-func SetupVeleroBackupLocation(sourceDynamicClient dynamic.Interface, destinationDynamicClient dynamic.Interface, config *common.Config) {
+var (
+	backupLocationGVR = schema.GroupVersionResource{
+		Group:    veleroApiGroup,
+		Version:  apiVersion,
+		Resource: "backupstoragelocations",
+	}
+)
+
+func SetupVeleroBackupLocation(sourceDynamicClient dynamic.Interface, destinationDynamicClient dynamic.Interface, config *common.Config) string {
 	backup, err := GetBackup(sourceDynamicClient, config.SourceVeleroNamespace, config.VeleroRestoreOptions.BackupName)
 	if err != nil {
 		log.Fatalf("Error: could not get backup, %v", err)
@@ -48,7 +56,9 @@ func SetupVeleroBackupLocation(sourceDynamicClient dynamic.Interface, destinatio
 		if !backupReady {
 			log.Fatalf("Error: could not get backup %s on destination cluster", config.VeleroRestoreOptions.BackupName)
 		}
+		return fmt.Sprintf("%s-readonly", sourceBucketName)
 	}
+	return ""
 }
 
 func SetupDestinationBackupLocationSecret(sourceDynamicClient dynamic.Interface, destinationDynamicClient dynamic.Interface, sourceBackupLocation *unstructured.Unstructured, sourceBucketName string, config *common.Config) {
@@ -74,7 +84,7 @@ func handleExistingCredentials(sourceDynamicClient dynamic.Interface, destinatio
 		log.Fatalf("Error: could not read source BackupStorageLocation secret. %v", err)
 	}
 
-	err = CreateSecret(destinationDynamicClient, config.DestinationVeleroNamespace, destinationBackupLocationName, secret)
+	err = EnsureSecret(destinationDynamicClient, config.DestinationVeleroNamespace, destinationBackupLocationName, secret)
 	if err != nil {
 		log.Fatalf("Error: Could not create secret for BackupStorageLocation in destination cluster. %v", err)
 	}
@@ -103,11 +113,12 @@ func handleNoCredentials(sourceDynamicClient dynamic.Interface, destinationDynam
 		log.Fatalf("Error: could not retrieve velero Pod secret in source cluster. %v", err)
 	}
 
-	err = CreateSecret(destinationDynamicClient, config.DestinationVeleroNamespace, destinationBackupLocationName, secret)
+	err = EnsureSecret(destinationDynamicClient, config.DestinationVeleroNamespace, destinationBackupLocationName, secret)
 	if err != nil {
 		log.Fatalf("Error: Could not create secret for BackupStorageLocation in destination cluster. %v", err)
 	}
-	credentialSpec := map[string]string{
+
+	credentialSpec := map[string]interface{}{
 		"name": destinationBackupLocationName,
 		"key":  "cloud",
 	}
@@ -140,11 +151,7 @@ func findDestinationStorageLocation(sourceBackupLocation *unstructured.Unstructu
 
 func getBackupStorageLocation(dynamicClient dynamic.Interface, namespace string, name string) (unstructured.Unstructured, error) {
 	// Create a GVR which represents an Istio Virtual Service.
-	groupVersionResource := schema.GroupVersionResource{
-		Group:    veleroApiGroup,
-		Version:  apiVersion,
-		Resource: "backupstoragelocations",
-	}
+	groupVersionResource := backupLocationGVR
 
 	// List all of the Virtual Services.
 	backup, err := dynamicClient.Resource(groupVersionResource).Namespace(namespace).Get(context.TODO(), name, metav1.GetOptions{})
@@ -158,11 +165,7 @@ func getBackupStorageLocation(dynamicClient dynamic.Interface, namespace string,
 func listBackupStorageLocations(dynamicClient dynamic.Interface, namespace string) (*unstructured.UnstructuredList, error) {
 
 	// Create a GVR which represents an Istio Virtual Service.
-	groupVersionResource := schema.GroupVersionResource{
-		Group:    veleroApiGroup,
-		Version:  apiVersion,
-		Resource: "backupstoragelocations",
-	}
+	groupVersionResource := backupLocationGVR
 
 	// List all of the Virtual Services.
 	backupStorageLocations, err := dynamicClient.Resource(groupVersionResource).Namespace(namespace).List(context.TODO(), metav1.ListOptions{})
@@ -185,7 +188,7 @@ func createVeleroBackupStorageLocation(dynamicClient dynamic.Interface, namespac
 			"spec": spec,
 		},
 	}
-
+	spec["default"] = false
 	err := createResource(dynamicClient, namespace, &backupStorageLocation, "backupstoragelocations")
 	if err != nil {
 		return err

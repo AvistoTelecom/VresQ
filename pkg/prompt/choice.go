@@ -71,6 +71,9 @@ func ChooseNamespaces(dynamiClient *dynamic.DynamicClient, config *common.Config
 	if err != nil {
 		return nil, err
 	}
+	if len(selectedItems) == 0 {
+		return nil, fmt.Errorf("no namespaces were selected")
+	}
 	for _, selectedNs := range selectedItems {
 		result = append(result, selectedNs.ID)
 		config.VeleroRestoreOptions.IncludedNamespaces = append(config.VeleroRestoreOptions.IncludedNamespaces, selectedNs.ID)
