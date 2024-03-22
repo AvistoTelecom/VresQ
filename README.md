@@ -84,7 +84,7 @@ Precedence order is:
 
 
 # License
-This project is licensed under the X License.
+This project is licensed under the Apache-2.0 License.
 
 # Contributing
 We welcome contributions! If you find any issues or have suggestions, please open an issue or submit a pull request.
