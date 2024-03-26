@@ -43,12 +43,7 @@ $ vresq
 # Installation
 ## Linux
 ```shell
-$ VRESQ_VERSION="1.0.0-alpha" && \
-wget "https://github.com/AvistoTelecom/VresQ/releases/download/$VRESQ_VERSION/VresQ_Linux_x86_64.tar.gz" && \
-tar -zxvf VresQ_Linux_x86_64.tar.gz && \
-chmod +x VresQ && \
-sudo mv VresQ /usr/local/bin/vresq && \
-rm VresQ_Linux_x86_64.tar.gz
+$ curl -sL https://github.com/AvistoTelecom/VresQ/releases/latest/download/VresQ_Linux_x86_64.tar.gz | tar -xz VresQ && sudo mv VresQ /usr/local/bin/vresq
 ```
 
 # Documentation
