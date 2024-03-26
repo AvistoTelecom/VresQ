@@ -5,6 +5,11 @@ package main
 
 import "vresq/cmd"
 
+var (
+	version = "dev"
+)
+
 func main() {
+	cmd.SetVersionInfo(version)
 	cmd.Execute()
 }
