@@ -55,7 +55,7 @@ rm VresQ_Linux_x86_64.tar.gz
 [Docs](./docs/)
 
 # License
-This project is licensed under the Apache-2.0 license.
+This project is licensed under the Apache-2.0 License.
 
 # Contributing
 We welcome contributions! If you find any issues or have suggestions, please open an issue or submit a pull request.
