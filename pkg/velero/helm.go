@@ -12,28 +12,35 @@ import (
 	"helm.sh/helm/v3/pkg/repo"
 )
 
+// getHelmReleaseByShortName retrieves a Helm release by its short name.
+// It returns the release and a boolean indicating if the release is found.
 func getHelmReleaseByShortName(shortName string, helmClient helm.Client) (release.Release, bool) {
+	// List deployed Helm releases
 	releases, err := helmClient.ListDeployedReleases()
 	if err != nil {
-		log.Fatalf("Error: Could not List deployed helm releases : %v", err)
+		log.Fatalf("Error: Could not list deployed Helm releases: %v", err)
 		return release.Release{}, false
 	}
 	if len(releases) == 0 {
-		log.Fatal("Error: no deployed Helm releases found in source cluster.")
+		log.Fatal("Error: No deployed Helm releases found in the source cluster.")
 		return release.Release{}, false
 	}
+
+	// Filter releases by shortName
 	filteredReleases := []release.Release{}
 	for _, release := range releases {
-		fmt.Printf("found release: %s\n", release.Name)
+		fmt.Printf("Found release: %s\n", release.Name)
 		if strings.Contains(release.Chart.Name(), shortName) {
 			filteredReleases = append(filteredReleases, *release)
 		}
 	}
+
+	// Handle filtered releases
 	if len(filteredReleases) == 0 {
 		return release.Release{}, false
 	}
 	if len(filteredReleases) > 1 {
-		log.Println("Warning: found multiple helm releases in cluster with \"velero\" in name :")
+		log.Println("Warning: Found multiple Helm releases in the cluster with \"velero\" in name:")
 		for _, release := range filteredReleases {
 			log.Println(release.Name)
 		}
@@ -42,19 +49,23 @@ func getHelmReleaseByShortName(shortName string, helmClient helm.Client) (releas
 	return filteredReleases[0], true
 }
 
+// cloneVeleroHelmChart clones the Velero Helm chart to the destination Kubernetes cluster.
 func cloneVeleroHelmChart(destinationHelmClient helm.Client, destinationHelmValues map[string]interface{}, sourceVeleroRelease release.Release, destinationReleaseNamespace string) {
+	// Define the chart repository
 	chartRepo := repo.Entry{
 		Name:                  "velero",
 		URL:                   "https://vmware-tanzu.github.io/helm-charts",
 		InsecureSkipTLSverify: true,
 	}
-	// Add a chart-repository to the client.
+	// Add or update the chart repository to the Helm client
 	if err := destinationHelmClient.AddOrUpdateChartRepo(chartRepo); err != nil {
-		log.Fatalf("Error: could not add %s chart Repo to helm client %v ", chartRepo.URL, err)
+		log.Fatalf("Error: Could not add %s chart repository to the Helm client: %v", chartRepo.URL, err)
 	}
+
+	// Convert destination Helm values to YAML
 	destinationRealeaseValuesYAML, err := mapToYAML(destinationHelmValues)
 	if err != nil {
-		log.Fatalf("Error: could not Parse source Release YAML Values.")
+		log.Fatalf("Error: Could not parse source release YAML values.")
 	}
 
 	// Define the chart to be installed
@@ -70,7 +81,9 @@ func cloneVeleroHelmChart(destinationHelmClient helm.Client, destinationHelmValu
 		Timeout:         15 * time.Minute,
 		ValuesYaml:      destinationRealeaseValuesYAML,
 	}
+
+	// Install or upgrade the Helm chart on the destination Kubernetes cluster
 	if _, err := destinationHelmClient.InstallOrUpgradeChart(context.Background(), &destinationChartSpec, &helm.GenericHelmOptions{}); err != nil {
-		log.Fatalf("Error: could not install or update velero helm chart on destination kubernetes cluster %v", err)
+		log.Fatalf("Error: Could not install or update Velero Helm chart on the destination Kubernetes cluster: %v", err)
 	}
 }

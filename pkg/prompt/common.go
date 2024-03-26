@@ -23,6 +23,7 @@ const (
 	toBold             = "{{ . | bold }} "
 )
 
+// Context represents a Kubernetes context.
 type Context struct {
 	Context struct {
 		Cluster string `yaml:"cluster"`
@@ -31,10 +32,12 @@ type Context struct {
 	Name string `yaml:"name"`
 }
 
+// Kubeconfig represents a Kubernetes configuration.
 type Kubeconfig struct {
 	Contexts []Context `yaml:"contexts"`
 }
 
+// BackupInfo contains information about a backup.
 type BackupInfo struct {
 	Name                string
 	Status              string
@@ -42,15 +45,18 @@ type BackupInfo struct {
 	IncludedNamespaces  []interface{}
 }
 
+// item represents an item in a selection.
 type item struct {
 	ID         string
 	IsSelected bool
 }
 
+// ConfirmUserChoice prompts the user for a confirmation choice.
 func ConfirmUserChoice(label string) bool {
 	return promptWithSelect(fmt.Sprintf("%s?", label), []string{ConfirmYes, ConfirmNo}) == ConfirmYes
 }
 
+// promptWithSelect prompts the user to select from a list of choices.
 func promptWithSelect(label string, choices []string) string {
 	prompt := promptui.Select{
 		Label: label,
@@ -66,6 +72,7 @@ func promptWithSelect(label string, choices []string) string {
 	return selected
 }
 
+// promptWithValidate prompts the user for input with validation.
 func promptWithValidate(label string, validate func(string) error, entity string, defaultValue string) (string, error) {
 	templates := getPromptTemplates()
 
@@ -86,9 +93,8 @@ func promptWithValidate(label string, validate func(string) error, entity string
 	return result, nil
 }
 
+// UserInput prompts the user for input, validates it, and returns the result.
 func UserInput(regex *regexp.Regexp, validationError string, label string, defaultValue string) (string, error) {
-	// regex := regexp.MustCompile(`[a-z0-9]([-a-z0-9]*[a-z0-9])?`)
-	// validationError := "namespace name should match the regex: '[a-z0-9]([-a-z0-9]*[a-z0-9])?'"
 	validate := func(input string) error {
 		str := strings.ReplaceAll(input, label, "")
 		match := regex.MatchString(str)
@@ -122,9 +128,8 @@ func UserInput(regex *regexp.Regexp, validationError string, label string, defau
 	return result, nil
 }
 
+// selectItems prompts the user to select items from a list.
 func selectItems(selectedPos int, allItems []*item, label string) ([]*item, error) {
-	// Always prepend a "Done" item to the slice if it doesn't
-	// already exist.
 	const doneID = "Done"
 	if len(allItems) > 0 && allItems[0].ID != doneID {
 		var items = []*item{
@@ -135,7 +140,6 @@ func selectItems(selectedPos int, allItems []*item, label string) ([]*item, erro
 		allItems = append(items, allItems...)
 	}
 
-	// Define promptui template
 	templates := &promptui.SelectTemplates{
 		Label: `{{if .IsSelected}}
                     ✔
@@ -145,11 +149,10 @@ func selectItems(selectedPos int, allItems []*item, label string) ([]*item, erro
 	}
 
 	prompt := promptui.Select{
-		Label:     label,
-		Items:     allItems,
-		Templates: templates,
-		Size:      5,
-		// Start the cursor at the currently selected index
+		Label:        label,
+		Items:        allItems,
+		Templates:    templates,
+		Size:         5,
 		CursorPos:    selectedPos,
 		HideSelected: true,
 	}
@@ -162,14 +165,10 @@ func selectItems(selectedPos int, allItems []*item, label string) ([]*item, erro
 	chosenItem := allItems[selectionIdx]
 
 	if chosenItem.ID != doneID {
-		// If the user selected something other than "Done",
-		// toggle selection on this item and run the function again.
 		chosenItem.IsSelected = !chosenItem.IsSelected
 		return selectItems(selectionIdx, allItems, label)
 	}
 
-	// If the user selected the "Done" item, return
-	// all selected items.
 	var selectedItems []*item
 	for _, i := range allItems {
 		if i.IsSelected && i.ID != doneID {

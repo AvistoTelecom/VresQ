@@ -14,7 +14,10 @@ import (
 	"k8s.io/client-go/dynamic"
 )
 
+// CreateVeleroRestore creates a Velero restore with the specified options.
+// It returns an error if the creation or watching of the restore fails.
 func CreateVeleroRestore(dynamicClient dynamic.Interface, namespace string, name string, options common.VeleroRestoreOptions) error {
+	// Define the restore object
 	restore := unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "velero.io/v1",
@@ -44,12 +47,14 @@ func CreateVeleroRestore(dynamicClient dynamic.Interface, namespace string, name
 		},
 	}
 
+	// Define the Velero restore GVR
 	groupVersionResource := schema.GroupVersionResource{
 		Group:    veleroApiGroup,
 		Version:  apiVersion,
 		Resource: "restores",
 	}
 
+	// Create the restore resource
 	err := createResource(dynamicClient, namespace, &restore, "restores")
 	if err != nil {
 		return err
@@ -66,8 +71,8 @@ func CreateVeleroRestore(dynamicClient dynamic.Interface, namespace string, name
 	return nil
 }
 
-// watchRestore watches the restore with the given name in the specified namespace
-// until its status is completed or fails. It returns an error if the restore fails.
+// watchRestore watches the Velero restore until its status is completed or fails.
+// It returns an error if the restore fails.
 func watchRestore(dynamicClient dynamic.Interface, namespace, restoreName string, veleroRestoreGVR schema.GroupVersionResource) error {
 	log.Printf("Watching restore '%s' in namespace '%s'\n", restoreName, namespace)
 
@@ -93,6 +98,7 @@ func watchRestore(dynamicClient dynamic.Interface, namespace, restoreName string
 	return checkFinalStatus(dynamicClient, namespace, restoreName, veleroRestoreGVR)
 }
 
+// watchChanges watches for changes in the restore status until it's completed or fails.
 func watchChanges(dynamicClient dynamic.Interface, namespace, restoreName string, veleroRestoreGVR schema.GroupVersionResource, stopCh chan struct{}, watcher watch.Interface) {
 	for event := range watcher.ResultChan() {
 		restore, isUnstructured := event.Object.(*unstructured.Unstructured)
@@ -118,14 +124,17 @@ func watchChanges(dynamicClient dynamic.Interface, namespace, restoreName string
 	}
 }
 
+// checkFinalStatus checks the final status of the restore after watching.
+// It returns an error if the restore fails.
 func checkFinalStatus(dynamicClient dynamic.Interface, namespace, restoreName string, veleroRestoreGVR schema.GroupVersionResource) error {
-	// Check the final status of the restore
+	// Get the final status of the restore
 	finalRestore, err := dynamicClient.Resource(veleroRestoreGVR).Namespace(namespace).Get(context.TODO(), restoreName, metav1.GetOptions{})
 	if err != nil {
 		log.Printf("Failed to get final restore status: %v\n", err)
 		return fmt.Errorf("failed to get final restore status: %v", err)
 	}
 
+	// Extract the final status phase
 	finalStatusPhase, found, err := unstructured.NestedString(finalRestore.Object, "status", "phase")
 	if err != nil || !found {
 		log.Println("Failed to get final restore status phase")

@@ -2,8 +2,6 @@ package common
 
 import (
 	"time"
-
-	"k8s.io/client-go/dynamic"
 )
 
 const (
@@ -13,11 +11,6 @@ const (
 	ApiVersion     = "v1"
 	ConfigMapName  = "change-storage-class-config"
 )
-
-type DynamicClientInterface interface {
-	Resource(resource string, namespace string) dynamic.ResourceInterface
-	// Add other methods as needed
-}
 
 // Config holds configuration parameters
 type Config struct {

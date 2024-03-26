@@ -36,9 +36,7 @@ var (
 )
 
 const (
-	// The name of our config file, without the file extension because viper supports many different config file languages.
 	defaultConfigFilename = "vresq"
-
 	// The environment variable prefix of all environment variables bound to our command line flags.
 	// For example, --number is bound to VRESQ_NUMBER.
 	envPrefix                  = "VRESQ"
@@ -48,7 +46,6 @@ const (
 	ConfirmNo  = common.ConfirmNo
 )
 
-// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     "vresq",
 	Version: "main",
@@ -66,6 +63,7 @@ OR run using arguments:
 		return initConfig(cmd)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		// Check if source kubeconfig is provided, if not, prompt user to choose from default kubeconfig
 		if config.SourceKubeconfig == "" {
 			var err error
 			log.Printf("No source kubeconfig given, parsing contexts in default kubeconfig in %s ...", defaultSourceKubeconfig)
@@ -75,6 +73,7 @@ OR run using arguments:
 				log.Fatalf("Error selecting source context: %v", err)
 			}
 		}
+		// Check if destination kubeconfig is provided, if not, prompt user to choose or use source kubeconfig
 		if config.DestinationKubeconfig == "" {
 			label := "No destination kubeconfig given, do you want to use the source kubeconfig as a destination "
 			selected := prompt.ConfirmUserChoice(label)
@@ -95,12 +94,15 @@ OR run using arguments:
 			}
 		}
 
+		// Check current context and set up source and destination Kubernetes clients accordingly
 		currentContext := kube.CurrentContext{
 			SameOrOnlySourceKubeconfig: config.DestinationKubeconfig == "" || config.DestinationKubeconfig == config.SourceKubeconfig,
 			SameOrOnlySourceContext:    config.DestinationContext == "" || config.DestinationContext == config.SourceContext,
 			NoGivenContext:             config.DestinationContext == "" && config.SourceContext == "",
 		}
 		kube.SetupSourceAndDestinationKubernetesClients(&sourceDynamiClient, &destinationDynamiClient, &currentContext, &config)
+
+		// If source Velero namespace is not provided, try to detect it from the source cluster
 		if config.SourceVeleroNamespace == "" {
 			var err error
 			veleroPod, err := velero.GetVeleroPod(&sourceDynamiClient)
@@ -109,6 +111,8 @@ OR run using arguments:
 			}
 			config.SourceVeleroNamespace = veleroPod.GetNamespace()
 		}
+
+		// If destination Velero namespace is not provided, handle it
 		if config.DestinationVeleroNamespace == "" {
 			var err error
 			veleroPod, err := velero.GetVeleroPod(&destinationDynamiClient)
@@ -118,7 +122,7 @@ OR run using arguments:
 					log.Printf("Info: could not discover velero namespace in destination cluster.")
 					confirmChoices := []string{ConfirmYes, ConfirmNo}
 					promptSelect := promptui.Select{
-						Label: "No Velero helm chart was discoverd in destination cluster, do you want to clone it from source cluster ?",
+						Label: "No Velero helm chart was discovered in destination cluster, do you want to clone it from source cluster ?",
 						Items: confirmChoices,
 						Size:  2,
 					}
@@ -150,6 +154,8 @@ OR run using arguments:
 				}
 			}
 		}
+
+		// If restore name is not provided, prompt user to choose one
 		if config.RestoreName == "" {
 			restoreName, err := prompt.ChooseRestoreName()
 			if err != nil {
@@ -157,16 +163,17 @@ OR run using arguments:
 			}
 			config.RestoreName = restoreName
 		}
+
+		// If Velero backup name is not provided, prompt user to choose one
 		if config.VeleroRestoreOptions.BackupName == "" {
-			selected_backup, err := prompt.ChooseBackup(&sourceDynamiClient, config)
-			config.VeleroRestoreOptions.BackupName = selected_backup
+			selectedBackup, err := prompt.ChooseBackup(&sourceDynamiClient, config)
+			config.VeleroRestoreOptions.BackupName = selectedBackup
 			if err != nil {
 				log.Fatal(err)
 			}
 		}
-		for _, ns := range config.VeleroRestoreOptions.IncludedNamespaces {
-			log.Printf("---> %s", ns)
-		}
+
+		// If included namespaces are not provided, prompt user to choose them
 		if len(config.VeleroRestoreOptions.IncludedNamespaces) == 0 {
 			namespaces, err := prompt.ChooseNamespaces(&sourceDynamiClient, &config)
 			if err != nil {
@@ -174,6 +181,8 @@ OR run using arguments:
 			}
 			config.VeleroRestoreOptions.IncludedNamespaces = namespaces
 		}
+
+		// If namespace mapping is not provided, prompt user to choose them
 		if len(config.VeleroRestoreOptions.NamespaceMapping) == 0 {
 			var selected = false
 			for {
@@ -199,8 +208,12 @@ OR run using arguments:
 				}
 			}
 		}
+
+		// Set up Velero backup location and configmap
 		velero.SetupVeleroBackupLocation(&sourceDynamiClient, &destinationDynamiClient, &config)
 		velero.SetupVeleroConfigmap(&sourceDynamiClient, &destinationDynamiClient, config.DestinationVeleroNamespace)
+
+		// Create Velero restore
 		err := velero.CreateVeleroRestore(&destinationDynamiClient, config.DestinationVeleroNamespace, config.RestoreName, config.VeleroRestoreOptions)
 		if err != nil {
 			log.Fatalf("Error creating Velero Restore: %v", err)

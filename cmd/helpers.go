@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// setDefaultSourceKubeconfig sets the default kubeconfig path based on the user's home directory and OS.
 func setDefaultSourceKubeconfig() {
 	// Get the user's home directory
 	homeDir, err := os.UserHomeDir()
@@ -32,6 +33,7 @@ func setDefaultSourceKubeconfig() {
 	}
 }
 
+// bindFlags binds flags to their corresponding values in the viper configuration.
 func bindFlags(cmd *cobra.Command, v *viper.Viper) {
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
 		// Determine the naming convention of the flags when represented in the config file
@@ -71,6 +73,8 @@ func initConfig(cmd *cobra.Command) error {
 			return err
 		}
 	}
+
+	// Set default values for configuration parameters
 	v.SetDefault("source-context", "")
 	v.SetDefault("destination-context", "")
 	v.SetDefault("namespace", "velero")
@@ -93,9 +97,12 @@ func initConfig(cmd *cobra.Command) error {
 	v.SetDefault("preserve-node-ports", true)
 	v.SetDefault("existing-resource-policy", "none")
 	v.SetEnvPrefix(envPrefix)
+
 	// Bind environment variables
 	v.AutomaticEnv()
 	bindFlags(cmd, v)
+
+	// Unmarshal configuration into a struct
 	err := v.Unmarshal(&config)
 	if err != nil {
 		log.Fatalf("Error: could not read configuration, %v", err)
