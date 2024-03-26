@@ -1,6 +1,17 @@
 package velero
 
-import "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+import (
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+)
+
+var (
+	storageClassGVR = schema.GroupVersionResource{
+		Group:    "storage.k8s.io",
+		Version:  apiVersion,
+		Resource: "storageclasses",
+	}
+)
 
 func getDestinationDefaultStorageClass(storageClasses []unstructured.Unstructured) string {
 	for _, storageClass := range storageClasses {

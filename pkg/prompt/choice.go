@@ -87,7 +87,7 @@ func ChooseBackup(sourceDynamiClient *dynamic.DynamicClient, config common.Confi
 		return "", err
 	}
 	if len(backups.Items) == 0 {
-		return "", err
+		return "", fmt.Errorf("no backups found in source cluster")
 	}
 
 	// Create a slice to store backup details
@@ -95,18 +95,20 @@ func ChooseBackup(sourceDynamiClient *dynamic.DynamicClient, config common.Confi
 	for _, backup := range backups.Items {
 		// Populate BackupInfo struct with relevant details
 		// Parse the timestamp string
-		timestamp, err := time.Parse(time.RFC3339, backup.UnstructuredContent()["status"].(map[string]interface{})["completionTimestamp"].(string))
-		if err != nil {
-			return "", fmt.Errorf("error parsing timestamp: %v", err)
+		if backup.UnstructuredContent()["status"].(map[string]interface{})["phase"].(string) != "InProgress" {
+			timestamp, err := time.Parse(time.RFC3339, backup.UnstructuredContent()["status"].(map[string]interface{})["completionTimestamp"].(string))
+			if err != nil {
+				return "", fmt.Errorf("error parsing timestamp: %v", err)
+			}
+			completionTimestamp := timestamp.Format("02-01-2006 15:04:05")
+			info := BackupInfo{
+				Name:                backup.GetName(),
+				Status:              backup.UnstructuredContent()["status"].(map[string]interface{})["phase"].(string),
+				CompletionTimestamp: completionTimestamp,
+				IncludedNamespaces:  backup.UnstructuredContent()["spec"].(map[string]interface{})["includedNamespaces"].([]interface{}),
+			}
+			backupDetails = append(backupDetails, info)
 		}
-		completionTimestamp := timestamp.Format("02-01-2006 15:04:05")
-		info := BackupInfo{
-			Name:                backup.GetName(),
-			Status:              backup.UnstructuredContent()["status"].(map[string]interface{})["phase"].(string),
-			CompletionTimestamp: completionTimestamp,
-			IncludedNamespaces:  backup.UnstructuredContent()["spec"].(map[string]interface{})["includedNamespaces"].([]interface{}),
-		}
-		backupDetails = append(backupDetails, info)
 	}
 
 	// Define a custom template for the prompt to show additional details

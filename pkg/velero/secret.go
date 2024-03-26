@@ -12,12 +12,18 @@ import (
 
 func EnsureSecret(dynamicClient dynamic.Interface, namespace, secretName string, data map[string]string) error {
 	secretsResource := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "secrets"}
-
-	secret, err := dynamicClient.Resource(secretsResource).Namespace(namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+	secrets, err := dynamicClient.Resource(secretsResource).Namespace(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		return fmt.Errorf("could not check if secret exists: %v", err)
+		return fmt.Errorf("could not list secrets: %v", err)
 	}
-	if secret != nil {
+	found := false
+	for _, secret := range secrets.Items {
+		if secret.GetName() == secretName {
+			found = true
+			break
+		}
+	}
+	if found {
 		return nil
 	}
 	// Create the Secret object
