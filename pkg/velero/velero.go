@@ -23,14 +23,17 @@ type VeleroBackupStorageLocationOptions struct {
 	Provider      string
 }
 
+// NotFoundError represents an error indicating that a resource was not found.
 type NotFoundError struct {
 	Err error
 }
 
+// Error returns the error message.
 func (r NotFoundError) Error() string {
 	return r.Err.Error()
 }
 
+// Is checks if the given error matches the NotFoundError.
 func (r NotFoundError) Is(e error) bool {
 	return r.Err.Error() == e.Error()
 }
@@ -43,6 +46,7 @@ const (
 	configMapName  = common.ConfigMapName
 )
 
+// mapToYAML converts a map to YAML format.
 func mapToYAML(data map[string]interface{}) (string, error) {
 	yamlBytes, err := yaml.Marshal(data)
 	if err != nil {
@@ -51,6 +55,7 @@ func mapToYAML(data map[string]interface{}) (string, error) {
 	return string(yamlBytes), nil
 }
 
+// getVeleroPod retrieves the Velero pod running in the cluster.
 func GetVeleroPod(dynamicClient dynamic.Interface) (unstructured.Unstructured, error) {
 	// Create a GVR (Group, Version, Resource) for the Pods resource
 	podsGVR := schema.GroupVersionResource{
@@ -73,6 +78,7 @@ func GetVeleroPod(dynamicClient dynamic.Interface) (unstructured.Unstructured, e
 	return podList.Items[0], nil
 }
 
+// getVeleroPodSecretName retrieves the name of the secret associated with the Velero pod.
 func getVeleroPodSecretName(veleroPod *unstructured.Unstructured) (string, error) {
 	volumes, found, _ := unstructured.NestedSlice(veleroPod.Object, "spec", "volumes")
 	if !found {
@@ -89,6 +95,7 @@ func getVeleroPodSecretName(veleroPod *unstructured.Unstructured) (string, error
 	return "", fmt.Errorf("could not find velero pod volume 'cloud-credentials'")
 }
 
+// SetupVelero sets up Velero in the destination Kubernetes cluster.
 func SetupVelero(
 	sourceHelmClient helm.Client,
 	sourceDynamicClient dynamic.Interface,
@@ -115,6 +122,7 @@ func SetupVelero(
 	cloneVeleroHelmChart(destinationHelmClient, destinationHelmValues, *sourceVeleroRelease, config.DestinationVeleroNamespace)
 }
 
+// areMapsEqual checks if two maps are equal.
 func areMapsEqual(map1, map2 map[string]interface{}) bool {
 	if len(map1) != len(map2) {
 		return false
@@ -129,6 +137,7 @@ func areMapsEqual(map1, map2 map[string]interface{}) bool {
 	return true
 }
 
+// parseOrLabels parses the input map into a slice of map[string]map[string]string suitable for label selector.
 func parseOrLabels(inputMap map[string]string) []map[string]map[string]string {
 	var result []map[string]map[string]string
 
@@ -139,6 +148,7 @@ func parseOrLabels(inputMap map[string]string) []map[string]map[string]string {
 	return result
 }
 
+// createResource creates a Kubernetes resource.
 func createResource(dynamicClient dynamic.Interface, namespace string, resource *unstructured.Unstructured, r string) error {
 	_, err := dynamicClient.Resource(schema.GroupVersionResource{
 		Group:    resource.GroupVersionKind().Group,

@@ -16,6 +16,7 @@ type CurrentContext struct {
 	SameOrOnlySourceContext    bool
 }
 
+// SetupSourceAndDestinationKubernetesClients sets up dynamic Kubernetes clients based on the provided configurations.
 func SetupSourceAndDestinationKubernetesClients(sourceDynamicClient *dynamic.DynamicClient, destinationDynamicClient *dynamic.DynamicClient, currentContext *CurrentContext, config *common.Config) {
 	sourceKubeconfig := config.SourceKubeconfig
 	sourceContext := config.SourceContext
@@ -36,6 +37,7 @@ func SetupSourceAndDestinationKubernetesClients(sourceDynamicClient *dynamic.Dyn
 	}
 }
 
+// SetupSourceAndDestinationHelmClients sets up Helm clients based on the provided configurations.
 func SetupSourceAndDestinationHelmClients(sourceHelmClient *helm.Client, destinationHelmClient *helm.Client, currentContext *CurrentContext, config *common.Config) {
 	sourceKubeconfig := config.SourceKubeconfig
 	sourceContext := config.SourceContext
@@ -56,73 +58,76 @@ func SetupSourceAndDestinationHelmClients(sourceHelmClient *helm.Client, destina
 	}
 }
 
+// GetKubernetesClientWithContext returns a dynamic Kubernetes client based on the provided kubeconfig and context.
 func GetKubernetesClientWithContext(kubeconfig, contextName string) dynamic.DynamicClient {
 	config, err := buildConfigWithContextFromFlags(contextName, kubeconfig)
 	if err != nil {
 		log.Fatalf("Error building Kubernetes config: %v", err)
 	}
-	dynamiClient, err := dynamic.NewForConfig(config)
+	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
-		log.Fatalf("Fail to create the k8s dynamic client. Errorf - %v", err)
+		log.Fatalf("Fail to create the k8s dynamic client. Error: %v", err)
 	}
-	return *dynamiClient
+	return *dynamicClient
 }
 
+// GetHelmClientWithContext returns a Helm client based on the provided kubeconfig, context, and namespace.
 func GetHelmClientWithContext(kubeconfig, contextName, namespace string) helm.Client {
 	config, err := buildConfigWithContextFromFlags(contextName, kubeconfig)
 	if err != nil {
 		log.Fatalf("Error building Kubernetes config: %v", err)
 	}
-	opt := &helm.RestConfClientOptions{
+	options := &helm.RestConfClientOptions{
 		Options: &helm.Options{
 			Namespace: namespace,
-			// Debug:            true,
-			Linting: false,
+			Linting:   false,
 		},
 		RestConfig: config,
 	}
 
-	helmClient, err := helm.NewClientFromRestConf(opt)
+	helmClient, err := helm.NewClientFromRestConf(options)
 	if err != nil {
 		log.Fatalf("Error creating Helm Kubernetes client: %v", err)
 	}
 	return helmClient
 }
 
+// GetKubernetesClient returns a dynamic Kubernetes client based on the provided kubeconfig.
 func GetKubernetesClient(kubeconfig string) dynamic.DynamicClient {
 	config, err := buildConfigWithContextFromFlags("", kubeconfig)
 	if err != nil {
 		log.Fatalf("Error building Kubernetes config: %v", err)
 	}
-	dynamiClient, err := dynamic.NewForConfig(config)
+	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
-		log.Fatalf("Fail to create the k8s dynamic client. Errorf - %v", err)
+		log.Fatalf("Fail to create the k8s dynamic client. Error: %v", err)
 	}
-	return *dynamiClient
+	return *dynamicClient
 }
 
+// GetHelmClient returns a Helm client based on the provided kubeconfig and namespace.
 func GetHelmClient(kubeconfig, namespace string) helm.Client {
 	config, err := buildConfigWithContextFromFlags("", kubeconfig)
 	if err != nil {
 		log.Fatalf("Error building Kubernetes config: %v", err)
 	}
 
-	opt := &helm.RestConfClientOptions{
+	options := &helm.RestConfClientOptions{
 		Options: &helm.Options{
 			Namespace: namespace,
-			// Debug:            true,
-			Linting: false,
+			Linting:   false,
 		},
 		RestConfig: config,
 	}
 
-	helmClient, err := helm.NewClientFromRestConf(opt)
+	helmClient, err := helm.NewClientFromRestConf(options)
 	if err != nil {
 		log.Fatalf("Error creating Helm Kubernetes client: %v", err)
 	}
 	return helmClient
 }
 
+// buildConfigWithContextFromFlags constructs a Kubernetes client configuration with the provided context and kubeconfig.
 func buildConfigWithContextFromFlags(context string, kubeconfigPath string) (*rest.Config, error) {
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},

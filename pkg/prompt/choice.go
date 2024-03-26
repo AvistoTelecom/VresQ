@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/dynamic"
 )
 
+// ChooseRestoreName prompts the user to choose a restore name and validates it.
 func ChooseRestoreName() (string, error) {
 	regex := regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
 	validationError := "restore name should match the regex: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'"
@@ -23,9 +24,8 @@ func ChooseRestoreName() (string, error) {
 		match := regex.MatchString(str)
 		if match && !strings.Contains(str, " ") {
 			return nil
-		} else {
-			return errors.New(validationError)
 		}
+		return errors.New(validationError)
 	}
 	now := time.Now()
 	t := now.Format("2006-01-02-15-04")
@@ -53,6 +53,7 @@ func ChooseRestoreName() (string, error) {
 	return result, nil
 }
 
+// ChooseNamespaces prompts the user to choose namespaces for restore.
 func ChooseNamespaces(dynamiClient *dynamic.DynamicClient, config *common.Config) ([]string, error) {
 	backup, err := velero.GetBackup(dynamiClient, config.SourceVeleroNamespace, config.VeleroRestoreOptions.BackupName)
 	if err != nil {
@@ -81,6 +82,7 @@ func ChooseNamespaces(dynamiClient *dynamic.DynamicClient, config *common.Config
 	return result, nil
 }
 
+// ChooseBackup prompts the user to choose a backup for restore.
 func ChooseBackup(sourceDynamiClient *dynamic.DynamicClient, config common.Config) (string, error) {
 	backups, err := velero.ListBackups(sourceDynamiClient, config.SourceVeleroNamespace)
 	if err != nil {
@@ -155,6 +157,7 @@ func ChooseBackup(sourceDynamiClient *dynamic.DynamicClient, config common.Confi
 	return result, nil
 }
 
+// chooseContext prompts the user to choose a context.
 func chooseContext(contexts []Context, contextLabel string) (string, error) {
 	templates := getSelectTemplates()
 

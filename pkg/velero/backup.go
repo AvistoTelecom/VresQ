@@ -12,23 +12,33 @@ import (
 	"k8s.io/client-go/dynamic"
 )
 
+var (
+	backupGVR = schema.GroupVersionResource{
+		Group:    veleroApiGroup,
+		Version:  apiVersion,
+		Resource: "backups",
+	}
+)
+
+// watchBackupWithTimeout watches a Velero backup with a timeout period.
 func watchBackupWithTimeout(dynamicClient dynamic.Interface, namespace, backupName string, veleroBackupGVR schema.GroupVersionResource, timeout time.Duration) (bool, error) {
 	log.Printf("Watching backup '%s' in namespace '%s' with timeout %v\n", backupName, namespace, timeout)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	// Set up the list interface
+	// Set up list options to filter backups by name
 	listOptions := metav1.ListOptions{
 		FieldSelector: fmt.Sprintf("metadata.name=%s", backupName),
 	}
 
-	// Check if the desired backup is already present
+	// Check if the desired backup already exists
 	backups, err := dynamicClient.Resource(veleroBackupGVR).Namespace(namespace).List(ctx, listOptions)
 	if err != nil {
 		return false, fmt.Errorf("failed to list backups: %v", err)
 	}
 
+	// If the backup exists, return true immediately
 	if backupExists(backups.Items, backupName) {
 		log.Printf("Backup '%s' found without waiting\n", backupName)
 		return true, nil
@@ -75,16 +85,9 @@ func backupExists(backups []unstructured.Unstructured, backupName string) bool {
 	return false
 }
 
+// GetBackup retrieves a Velero backup by name from the specified namespace.
 func GetBackup(dynamicClient dynamic.Interface, namespace string, name string) (unstructured.Unstructured, error) {
-	// Create a GVR which represents an Istio Virtual Service.
-	groupVersionResource := schema.GroupVersionResource{
-		Group:    veleroApiGroup,
-		Version:  apiVersion,
-		Resource: "backups",
-	}
-
-	// List all of the Virtual Services.
-	backup, err := dynamicClient.Resource(groupVersionResource).Namespace(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	backup, err := dynamicClient.Resource(backupGVR).Namespace(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return unstructured.Unstructured{}, err
 	}
@@ -92,17 +95,9 @@ func GetBackup(dynamicClient dynamic.Interface, namespace string, name string) (
 	return *backup, nil
 }
 
+// ListBackups lists all Velero backups in the specified namespace.
 func ListBackups(dynamicClient dynamic.Interface, namespace string) (*unstructured.UnstructuredList, error) {
-
-	// Create a GVR which represents an Istio Virtual Service.
-	groupVersionResource := schema.GroupVersionResource{
-		Group:    veleroApiGroup,
-		Version:  apiVersion,
-		Resource: "backups",
-	}
-
-	// List all of the Virtual Services.
-	backups, err := dynamicClient.Resource(groupVersionResource).Namespace(namespace).List(context.TODO(), metav1.ListOptions{})
+	backups, err := dynamicClient.Resource(backupGVR).Namespace(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
