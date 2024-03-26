@@ -62,3 +62,9 @@ We welcome contributions! If you find any issues or have suggestions, please ope
 
 # Acknowledgments
 Special thanks to the Velero project for providing a robust backup and restore solution for Kubernetes.
+
+## Contact Us
+Have questions, suggestions, or feedback? Feel free to reach out to us!
+
+- **Email:** [community@avisto.com](mailto:community@avisto.com)
+- **GitHub Issues:** [Open an issue](https://github.com/AvistoTelecom/VresQ/issues/new)
