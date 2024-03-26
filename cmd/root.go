@@ -18,6 +18,7 @@ import (
 	velero "vresq/pkg/velero"
 
 	"github.com/go-logr/logr"
+	"github.com/manifoldco/promptui"
 	helm "github.com/mittwald/go-helm-client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -99,7 +100,7 @@ OR run using arguments:
 			SameOrOnlySourceContext:    config.DestinationContext == "" || config.DestinationContext == config.SourceContext,
 			NoGivenContext:             config.DestinationContext == "" && config.SourceContext == "",
 		}
-		kube.SetupSourceAndDestinationClients(&sourceHelmClient, &sourceDynamiClient, &destinationHelmClient, &destinationDynamiClient, &currentContext, &config)
+		kube.SetupSourceAndDestinationKubernetesClients(&sourceDynamiClient, &destinationDynamiClient, &currentContext, &config)
 		if config.SourceVeleroNamespace == "" {
 			var err error
 			veleroPod, err := velero.GetVeleroPod(&sourceDynamiClient)
@@ -115,6 +116,16 @@ OR run using arguments:
 			if err != nil {
 				if _, ok := err.(velero.NotFoundError); ok {
 					log.Printf("Info: could not discover velero namespace in destination cluster.")
+					confirmChoices := []string{ConfirmYes, ConfirmNo}
+					promptSelect := promptui.Select{
+						Label: "No Velero helm chart was discoverd in destination cluster, do you want to clone it from source cluster ?",
+						Items: confirmChoices,
+						Size:  2,
+					}
+					_, selected, err := promptSelect.Run()
+					if err != nil {
+						log.Fatalf("Error: %v", err)
+					}
 					if !currentContext.SameOrOnlySourceKubeconfig || !currentContext.SameOrOnlySourceContext {
 						if config.DestinationVeleroNamespace == "" {
 							label := "Namespace for velero installation in destination cluster:"
@@ -126,7 +137,13 @@ OR run using arguments:
 							}
 							config.DestinationVeleroNamespace = chosenNamespace
 						}
-						velero.SetupVelero(sourceHelmClient, &sourceDynamiClient, destinationHelmClient, &destinationDynamiClient, &config)
+						if selected == ConfirmYes {
+							log.Println("Cloning Velero helm release from source cluster...")
+							kube.SetupSourceAndDestinationHelmClients(&sourceHelmClient, &destinationHelmClient, &currentContext, &config)
+							velero.SetupVelero(sourceHelmClient, &sourceDynamiClient, destinationHelmClient, &destinationDynamiClient, &config)
+						} else {
+							log.Println("Skipping Velero helm release Cloning from source cluster...")
+						}
 					}
 				} else {
 					log.Fatal(err)
@@ -141,8 +158,8 @@ OR run using arguments:
 			config.RestoreName = restoreName
 		}
 		if config.VeleroRestoreOptions.BackupName == "" {
-			var err error
-			config.VeleroRestoreOptions.BackupName, err = prompt.ChooseBackup(&sourceDynamiClient, config)
+			selected_backup, err := prompt.ChooseBackup(&sourceDynamiClient, config)
+			config.VeleroRestoreOptions.BackupName = selected_backup
 			if err != nil {
 				log.Fatal(err)
 			}

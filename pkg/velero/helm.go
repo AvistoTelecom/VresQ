@@ -18,8 +18,13 @@ func getHelmReleaseByShortName(shortName string, helmClient helm.Client) (releas
 		log.Fatalf("Error: Could not List deployed helm releases : %v", err)
 		return release.Release{}, false
 	}
+	if len(releases) == 0 {
+		log.Fatal("Error: no deployed Helm releases found in source cluster.")
+		return release.Release{}, false
+	}
 	filteredReleases := []release.Release{}
 	for _, release := range releases {
+		fmt.Printf("found release: %s\n", release.Name)
 		if strings.Contains(release.Chart.Name(), shortName) {
 			filteredReleases = append(filteredReleases, *release)
 		}

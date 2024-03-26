@@ -7,7 +7,6 @@ import (
 	"log"
 	common "vresq/pkg/common"
 
-	"github.com/manifoldco/promptui"
 	helm "github.com/mittwald/go-helm-client"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -113,23 +112,7 @@ func SetupVelero(
 		log.Fatalf("Error: could not get helm release %s values from source cluster. %v", sourceVeleroRelease.Name, err)
 	}
 	destinationHelmValues := sourceHelmValuesMap
-	confirmChoices := []string{ConfirmYes, ConfirmNo}
-	prompt := promptui.Select{
-		Label: "No Velero helm chart was discoverd in destination cluster, do you want to clone it from source cluster ?",
-		Items: confirmChoices,
-		Size:  2,
-	}
-	_, selected, err := prompt.Run()
-	if err != nil {
-		log.Fatalf("Error: %v", err)
-	}
-
-	if selected == ConfirmYes {
-		log.Println("Cloning Velero helm release from source cluster...")
-		cloneVeleroHelmChart(destinationHelmClient, destinationHelmValues, *sourceVeleroRelease, config.DestinationVeleroNamespace)
-	} else {
-		log.Println("Skipping Velero helm release Cloning from source cluster...")
-	}
+	cloneVeleroHelmChart(destinationHelmClient, destinationHelmValues, *sourceVeleroRelease, config.DestinationVeleroNamespace)
 }
 
 func areMapsEqual(map1, map2 map[string]interface{}) bool {

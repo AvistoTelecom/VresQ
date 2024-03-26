@@ -16,37 +16,68 @@ type CurrentContext struct {
 	SameOrOnlySourceContext    bool
 }
 
-func SetupSourceAndDestinationClients(sourceHelmClient *helm.Client, sourceDynamicClient *dynamic.DynamicClient, destinationHelmClient *helm.Client, destinationDynamicClient *dynamic.DynamicClient, currentContext *CurrentContext, config *common.Config) {
+func SetupSourceAndDestinationKubernetesClients(sourceDynamicClient *dynamic.DynamicClient, destinationDynamicClient *dynamic.DynamicClient, currentContext *CurrentContext, config *common.Config) {
 	sourceKubeconfig := config.SourceKubeconfig
 	sourceContext := config.SourceContext
 	destinationContext := config.DestinationContext
 	destinationKubeconfig := config.DestinationKubeconfig
 
 	if currentContext.NoGivenContext {
-		*sourceHelmClient, *sourceDynamicClient = GetKubernetesClients(sourceKubeconfig)
-		*destinationHelmClient, *destinationDynamicClient = GetKubernetesClients(destinationKubeconfig)
+		*sourceDynamicClient = GetKubernetesClient(sourceKubeconfig)
+		*destinationDynamicClient = GetKubernetesClient(destinationKubeconfig)
 	} else {
 		if currentContext.SameOrOnlySourceContext {
 			sourceKubeconfig = destinationKubeconfig
 			sourceContext = destinationContext
 		}
 
-		*sourceHelmClient, *sourceDynamicClient = GetKubernetesClientsWithContext(sourceKubeconfig, sourceContext)
-		*destinationHelmClient, *destinationDynamicClient = GetKubernetesClientsWithContext(destinationKubeconfig, destinationContext)
+		*sourceDynamicClient = GetKubernetesClientWithContext(sourceKubeconfig, sourceContext)
+		*destinationDynamicClient = GetKubernetesClientWithContext(destinationKubeconfig, destinationContext)
 	}
 }
 
-func GetKubernetesClientsWithContext(kubeconfig, contextName string) (helm.Client, dynamic.DynamicClient) {
-	// Create Kubernetes client configuration
+func SetupSourceAndDestinationHelmClients(sourceHelmClient *helm.Client, destinationHelmClient *helm.Client, currentContext *CurrentContext, config *common.Config) {
+	sourceKubeconfig := config.SourceKubeconfig
+	sourceContext := config.SourceContext
+	destinationContext := config.DestinationContext
+	destinationKubeconfig := config.DestinationKubeconfig
+
+	if currentContext.NoGivenContext {
+		*sourceHelmClient = GetHelmClient(sourceKubeconfig, config.SourceVeleroNamespace)
+		*destinationHelmClient = GetHelmClient(destinationKubeconfig, config.DestinationVeleroNamespace)
+	} else {
+		if currentContext.SameOrOnlySourceContext {
+			sourceKubeconfig = destinationKubeconfig
+			sourceContext = destinationContext
+		}
+
+		*sourceHelmClient = GetHelmClientWithContext(sourceKubeconfig, sourceContext, config.SourceVeleroNamespace)
+		*destinationHelmClient = GetHelmClientWithContext(destinationKubeconfig, destinationContext, config.DestinationVeleroNamespace)
+	}
+}
+
+func GetKubernetesClientWithContext(kubeconfig, contextName string) dynamic.DynamicClient {
+	config, err := buildConfigWithContextFromFlags(contextName, kubeconfig)
+	if err != nil {
+		log.Fatalf("Error building Kubernetes config: %v", err)
+	}
+	dynamiClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		log.Fatalf("Fail to create the k8s dynamic client. Errorf - %v", err)
+	}
+	return *dynamiClient
+}
+
+func GetHelmClientWithContext(kubeconfig, contextName, namespace string) helm.Client {
 	config, err := buildConfigWithContextFromFlags(contextName, kubeconfig)
 	if err != nil {
 		log.Fatalf("Error building Kubernetes config: %v", err)
 	}
 	opt := &helm.RestConfClientOptions{
 		Options: &helm.Options{
-			Namespace: "velero", // Change this to the namespace you wish the client to operate in.
+			Namespace: namespace,
 			// Debug:            true,
-			Linting: false, // Change this to false if you don't want linting.
+			Linting: false,
 		},
 		RestConfig: config,
 	}
@@ -55,16 +86,22 @@ func GetKubernetesClientsWithContext(kubeconfig, contextName string) (helm.Clien
 	if err != nil {
 		log.Fatalf("Error creating Helm Kubernetes client: %v", err)
 	}
+	return helmClient
+}
+
+func GetKubernetesClient(kubeconfig string) dynamic.DynamicClient {
+	config, err := buildConfigWithContextFromFlags("", kubeconfig)
+	if err != nil {
+		log.Fatalf("Error building Kubernetes config: %v", err)
+	}
 	dynamiClient, err := dynamic.NewForConfig(config)
 	if err != nil {
 		log.Fatalf("Fail to create the k8s dynamic client. Errorf - %v", err)
 	}
-
-	return helmClient, *dynamiClient
+	return *dynamiClient
 }
 
-func GetKubernetesClients(kubeconfig string) (helm.Client, dynamic.DynamicClient) {
-	// Create Kubernetes client configuration
+func GetHelmClient(kubeconfig, namespace string) helm.Client {
 	config, err := buildConfigWithContextFromFlags("", kubeconfig)
 	if err != nil {
 		log.Fatalf("Error building Kubernetes config: %v", err)
@@ -72,9 +109,9 @@ func GetKubernetesClients(kubeconfig string) (helm.Client, dynamic.DynamicClient
 
 	opt := &helm.RestConfClientOptions{
 		Options: &helm.Options{
-			Namespace: "velero", // Change this to the namespace you wish the client to operate in.
+			Namespace: namespace,
 			// Debug:            true,
-			Linting: false, // Change this to false if you don't want linting.
+			Linting: false,
 		},
 		RestConfig: config,
 	}
@@ -83,13 +120,7 @@ func GetKubernetesClients(kubeconfig string) (helm.Client, dynamic.DynamicClient
 	if err != nil {
 		log.Fatalf("Error creating Helm Kubernetes client: %v", err)
 	}
-
-	dynamiClient, err := dynamic.NewForConfig(config)
-	if err != nil {
-		log.Fatalf("Fail to create the k8s dynamic client. Errorf - %v", err)
-	}
-
-	return helmClient, *dynamiClient
+	return helmClient
 }
 
 func buildConfigWithContextFromFlags(context string, kubeconfigPath string) (*rest.Config, error) {
