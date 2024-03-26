@@ -46,10 +46,13 @@ const (
 	ConfirmNo  = common.ConfirmNo
 )
 
+func SetVersionInfo(version string) {
+	rootCmd.Version = version
+}
+
 var rootCmd = &cobra.Command{
-	Use:     "vresq",
-	Version: "main",
-	Short:   "VresQ facilitates the restoration of Kubernetes resources from a Velero backup to the same or a different cluster with configurable options.",
+	Use:   "vresq",
+	Short: "VresQ facilitates the restoration of Kubernetes resources from a Velero backup to the same or a different cluster with configurable options.",
 	Long: `The "vresq" command facilitates the restoration of Kubernetes resources from a Velero backup
 to the same or a different cluster. It supports various options for configuring the restoration process, including specifying
 source and destination kubeconfig paths, source and destination contexts, backup name, namespace mappings, and more.
