@@ -45,7 +45,7 @@ $ vresq
 # Installation
 ## Linux
 ```shell
-$ curl -sL https://github.com/AvistoTelecom/VresQ/releases/latest/download/VresQ_Linux_x86_64.tar.gz | tar -xz VresQ && sudo mv VresQ /usr/local/bin/vresq
+curl -sL https://github.com/AvistoTelecom/VresQ/releases/latest/download/VresQ_Linux_x86_64.tar.gz | tar -xz VresQ && sudo mv VresQ /usr/local/bin/vresq
 ```
 
 ## Windows PowerShell
