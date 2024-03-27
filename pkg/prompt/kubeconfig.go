@@ -33,9 +33,13 @@ func ChooseKubeconfigContext(kubeconfigPath string, contextLabel string, config 
 	} else if len(contexts) == 1 {
 		// If there is only one context available, confirm its usage.
 		log.Printf("Only one context available in %s", kubeconfigPath)
-		return confirmSingleContext(contexts[0].Name, contextLabel)
+		confirmChoices := []string{ConfirmYes, ConfirmNo}
+		promptLabel := fmt.Sprintf("Do you confirm using %s as %s context ?", contexts[0].Name, contextLabel)
+		choice := promptWithSelect(promptLabel, confirmChoices)
+		if choice == ConfirmYes {
+			return contexts[0].Name, nil
+		}
 	}
-
 	// Return an empty string if no context needs to be chosen.
 	return "", nil
 }
@@ -78,13 +82,6 @@ func getKubeconfigContexts(kubeconfigPath string) ([]Context, error) {
 
 	// Return the list of contexts
 	return kubeconfig.Contexts, nil
-}
-
-// confirmSingleContext prompts the user to confirm using a single context.
-func confirmSingleContext(contextName, contextLabel string) (string, error) {
-	confirmChoices := []string{ConfirmYes, ConfirmNo}
-	promptLabel := fmt.Sprintf("Do you confirm using %s as %s context ?", contextName, contextLabel)
-	return promptWithSelect(promptLabel, confirmChoices), nil
 }
 
 // validateKubeconfig validates the provided kubeconfig file path.
